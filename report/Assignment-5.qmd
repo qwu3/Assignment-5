@@ -1,0 +1,163 @@
+---
+title: "Assignment-5"
+author: "Iris Wu"
+date: "Feb 25"
+format:
+  html: default
+  pdf: default
+
+editor: 
+    render-on-save: true
+---
+
+
+
+```{python}
+!pip install wbgapi
+!pip install numpy
+```
+
+
+```{python}
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import wbgapi as wb
+```
+
+
+
+```{python}
+# Define the indicators to download
+indicators = {
+    'gdp_per_capita': 'NY.GDP.PCAP.CD',
+    'gdp_growth_rate': 'NY.GDP.MKTP.KD.ZG',
+    'inflation_rate': 'FP.CPI.TOTL.ZG',
+    'unemployment_rate': 'SL.UEM.TOTL.ZS',
+    'total_population': 'SP.POP.TOTL',
+    'life_expectancy': 'SP.DYN.LE00.IN',
+    'adult_literacy_rate': 'SE.ADT.LITR.ZS',
+    'income_inequality': 'SI.POV.GINI',
+    'health_expenditure_gdp_share': 'SH.XPD.CHEX.GD.ZS',
+    'measles_immunisation_rate': 'SH.IMM.MEAS',
+    'education_expenditure_gdp_share': 'SE.XPD.TOTL.GD.ZS',
+    'primary_school_enrolment_rate': 'SE.PRM.ENRR',
+    'exports_gdp_share': 'NE.EXP.GNFS.ZS'
+}
+
+# Get the list of country codes for the "World" region
+country_codes = wb.region.members('WLD')
+
+# Download data for countries only in 2022
+df = wb.data.DataFrame(indicators.values(), economy=country_codes, time=2022, skipBlanks=True, labels=True).reset_index()
+
+# Delete the 'economy' column
+df = df.drop(columns=['economy'], errors='ignore')
+
+# Create a reversed dictionary mapping indicator codes to names
+# Rename the columns and convert all names to lowercase
+df.rename(columns=lambda x: {v: k for k, v in indicators.items()}.get(x, x).lower(), inplace=True)
+
+# Sort 'country' in ascending order
+df = df.sort_values('country', ascending=True)
+
+# Reset the index after sorting
+df = df.reset_index(drop=True)
+
+# Display the number of rows and columns
+print(df.shape)
+
+# Display the first few rows of the data
+print(df.head(3))
+
+# Save the data to a CSV file
+df.to_csv('wdi.csv', index=False)
+
+```
+
+## Exploratory Data Analysis
+```{python}
+df_selected = df[['country', 'gdp_per_capita', 'unemployment_rate', 'education_expenditure_gdp_share']]
+# Summary statistics
+df_selected.describe()
+```
+
+The summary statistics provide insights into the range, mean, and distribution of the selected indicators:
+- **GDP per Capita:** The values vary significantly across countries, indicating large economic disparities.
+- **Unemployment Rate:** The variation in unemployment rates across countries may highlight differences in labor market conditions.
+- **Education Expenditure (as % of GDP):** This indicator shows how much countries invest in education relative to their GDP.
+
+## Plots
+### Distribution of GDP Per Capita {#fig-gdp}
+
+```{python}
+plt.figure(figsize=(10, 6))
+data = df['gdp_per_capita'].dropna()
+n, bins = np.histogram(data, bins=30)
+plt.hist(bins[:-1], bins, weights=n, edgecolor='black')
+plt.xlabel('GDP Per Capita')
+plt.ylabel('Frequency')
+plt.title('Distribution of GDP Per Capita (2022)')
+plt.show()
+```
+
+
+The histogram (**Figure @fig-gdp**) shows that GDP per capita is right-skewed, meaning a few countries have exceptionally high GDP per capita, while most have lower values. The kernel density estimate (KDE) highlights the peak distribution.Economic inequality is evident.
+
+### Unemployment Rate Across Countries {#fig-unemployment}
+```{python}
+plt.figure(figsize=(12, 6))
+plt.boxplot(df['unemployment_rate'].dropna(), vert=False)
+plt.xlabel('Unemployment Rate')
+plt.title('Distribution of Unemployment Rate (2022)')
+plt.show()
+```
+
+
+The box plot (**Figure @fig-unemployment**) shows the variation in unemployment rates among countries. Some nations experience very low unemployment, while others have significantly high rates, suggesting diverse economic conditions.
+
+### 4. Education Expenditure vs. GDP Per Capita {#fig-education}
+```{python}
+plt.figure(figsize=(10, 6))
+# Ensure both x and y values are the same size
+gdp_per_capita = df_selected['gdp_per_capita']
+edu_expenditure = df_selected['education_expenditure_gdp_share']
+
+# Scatter plot
+plt.scatter(gdp_per_capita, edu_expenditure, alpha=0.7)
+plt.xlabel('GDP Per Capita')
+plt.ylabel('Education Expenditure (% of GDP)')
+plt.title('Education Expenditure vs. GDP Per Capita (2022)')
+plt.xscale('log')  # Log scale for better visualization
+plt.show()
+```
+
+The scatter plot (**Figure @fig-education**) suggests whether wealthier countries invest a larger proportion of their GDP in education. A weak or strong correlation could reveal trends in educational funding relative to economic status.
+
+Overall, this analysis highlights economic disparities, labor market conditions, and investment in education, providing insight into global development patterns.
+
+
+
+### References
+
+```bibtex
+@article{fuchs2010education,
+  title={Education or wealth: which matters more for reducing child mortality in developing countries?},
+  author={Fuchs, Regina and Pamuk, Elsie and Lutz, Wolfgang},
+  journal={Vienna Yearbook of Population Research},
+  pages={175--199},
+  year={2010},
+  publisher={JSTOR}
+}
+@article{ginsburg2012public,
+  title={Public-private partnerships and the global reform of education in less wealthy countries—A moderated discussion},
+  author={Ginsburg, Mark},
+  journal={Comparative Education Review},
+  volume={56},
+  number={1},
+  pages={155--175},
+  year={2012},
+  publisher={University of Chicago Press Chicago, IL}
+}
+```
+
